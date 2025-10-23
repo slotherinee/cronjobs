@@ -546,9 +546,29 @@
           loginError: '',
           registerError: '',
 
-          init() {
+          async init() {
             if (this.token) {
-              this.isAuthenticated = true;
+              // Verify token and fetch user data
+              try {
+                const meResponse = await fetch('/api/v1/auth/me', {
+                  headers: {
+                    Authorization: `Bearer ${this.token}`,
+                  },
+                });
+
+                if (meResponse.ok) {
+                  const userData = await meResponse.json();
+                  this.user = userData;
+                  this.isAuthenticated = true;
+                  localStorage.setItem('user', JSON.stringify(userData));
+                } else {
+                  // Token is invalid, clear it
+                  this.logout();
+                }
+              } catch (error) {
+                console.error('Failed to fetch user data:', error);
+                this.logout();
+              }
             }
           },
 
@@ -556,7 +576,7 @@
             this.loginError = '';
 
             try {
-              const response = await fetch('/api/auth/login', {
+              const response = await fetch('/api/v1/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(this.loginForm),
@@ -567,13 +587,24 @@
               }
 
               const data = await response.json();
+              this.token = data.access_token;
+              localStorage.setItem('jwt_token', data.access_token);
 
-              this.token = data.token;
-              this.user = data.user;
+              const meResponse = await fetch('/api/v1/auth/me', {
+                headers: {
+                  Authorization: `Bearer ${data.access_token}`,
+                },
+              });
+
+              if (!meResponse.ok) {
+                throw new Error('Не удалось получить данные пользователя');
+              }
+
+              const userData = await meResponse.json();
+              this.user = userData;
               this.isAuthenticated = true;
 
-              localStorage.setItem('jwt_token', data.token);
-              localStorage.setItem('user', JSON.stringify(data.user));
+              localStorage.setItem('user', JSON.stringify(userData));
 
               this.openLoginModal = false;
               this.loginForm = { email: '', password: '' };
@@ -598,7 +629,7 @@
             }
 
             try {
-              const response = await fetch('/api/auth/register', {
+              const response = await fetch('/api/v1/auth/register', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -613,13 +644,25 @@
               }
 
               const data = await response.json();
+              this.token = data.access_token;
+              localStorage.setItem('jwt_token', data.access_token);
 
-              this.token = data.token;
-              this.user = data.user;
+              // Fetch user data
+              const meResponse = await fetch('/api/v1/auth/me', {
+                headers: {
+                  Authorization: `Bearer ${data.access_token}`,
+                },
+              });
+
+              if (!meResponse.ok) {
+                throw new Error('Не удалось получить данные пользователя');
+              }
+
+              const userData = await meResponse.json();
+              this.user = userData;
               this.isAuthenticated = true;
 
-              localStorage.setItem('jwt_token', data.token);
-              localStorage.setItem('user', JSON.stringify(data.user));
+              localStorage.setItem('user', JSON.stringify(userData));
 
               this.openRegisterModal = false;
               this.registerForm = {
