@@ -14,6 +14,10 @@ export default () => {
       secret: JWT_SECRET,
       expiresIn: JWT_EXPIRES_IN,
     },
+    redis: {
+      host: process.env.REDIS_HOST || 'redis',
+      port: parseInt(process.env.REDIS_PORT || '6379', 10),
+    },
     database: {
       DB_CONNECTION: process.env.DB_CONNECTION || 'pgsql',
       DB_HOST: process.env.DB_HOST || 'pgsql',

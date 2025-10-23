@@ -23,13 +23,31 @@ model User {
 }
 
 model Job {
-  id        String   @id @default(uuid()) @db.Uuid
-  name      String   @db.VarChar(1000)
-  url       String   @db.Text()
-  schedule  String   @db.VarChar(255)
-  isActive  Boolean  @default(true) @map("is_active")
-  userId    String   @map("user_id") @db.Uuid
-  user      User     @relation(fields: [userId], references: [id])
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id        String    @id @default(uuid()) @db.Uuid
+  name      String    @db.VarChar(1000)
+  url       String    @db.Text()
+  method    String    @default("GET") @db.VarChar(10)
+  headers   String?   @db.Text()
+  body      String?   @db.Text()
+  schedule  String    @db.VarChar(255)
+  isActive  Boolean   @default(true) @map("is_active")
+  userId    String    @map("user_id") @db.Uuid
+  user      User      @relation(fields: [userId], references: [id])
+  logs      JobLog[]
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+}
+
+model JobLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  jobId       String   @map("job_id") @db.Uuid
+  job         Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  status      String   @db.VarChar(50)
+  statusCode  Int?     @map("status_code")
+  response    String?  @db.Text()
+  duration    Int?     @db.Integer()
+  executedAt  DateTime @default(now()) @map("executed_at")
+
+  @@index([jobId, executedAt])
+  @@map("job_logs")
 }

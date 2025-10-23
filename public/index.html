@@ -57,7 +57,7 @@
     <header
       class="bg-black text-white py-3 px-4 md:py-4 md:px-6 flex items-center justify-between flex-wrap gap-3"
     >
-      <h1 class="text-lg md:text-xl font-semibold">CronJobs Dashboard</h1>
+      <h1 class="text-lg md:text-xl font-semibold">Cron Manager</h1>
       <div class="flex items-center gap-2 md:gap-3">
         <template x-if="isAuthenticated">
           <div class="flex items-center gap-2 md:gap-3 flex-wrap">
@@ -73,7 +73,7 @@
             </button>
             <button
               @click="logout()"
-              class="bg-red-600 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg hover:bg-red-700 transition text-sm md:text-base"
+              class="bg-gray-700 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg hover:bg-gray-600 transition text-sm md:text-base"
             >
               Выйти
             </button>
@@ -99,12 +99,12 @@
     </header>
 
     <!-- Main -->
-    <main class="flex-1 p-3 md:p-6">
+    <main class="flex-1 flex flex-col p-3 md:p-6">
       <!-- Если не авторизован -->
       <div
         x-show="!isAuthenticated"
         x-cloak
-        class="flex items-center justify-center h-full"
+        class="flex-1 flex items-center justify-center"
       >
         <div class="text-center px-4">
           <h2 class="text-xl md:text-2xl font-semibold text-gray-700 mb-2">
@@ -165,14 +165,23 @@
                   </td>
                   <td class="px-4 py-2 text-right space-x-2">
                     <button
+                      @click="viewLogs(job.id)"
+                      class="text-blue-600 hover:text-blue-800"
+                      title="Просмотр логов"
+                    >
+                      📋
+                    </button>
+                    <button
                       @click="editJob(job)"
                       class="text-gray-600 hover:text-black"
+                      title="Редактировать"
                     >
                       ✏️
                     </button>
                     <button
                       @click="confirmDelete(job.id)"
                       class="text-red-500 hover:text-red-700"
+                      title="Удалить"
                     >
                       🗑
                     </button>
@@ -229,6 +238,12 @@
 
               <div class="flex gap-2 pt-2 border-t border-gray-100">
                 <button
+                  @click="viewLogs(job.id)"
+                  class="flex-1 bg-blue-50 text-blue-700 px-3 py-2 rounded hover:bg-blue-100 text-sm font-medium"
+                >
+                  📋 Логи
+                </button>
+                <button
                   @click="editJob(job)"
                   class="flex-1 bg-gray-100 text-gray-700 px-3 py-2 rounded hover:bg-gray-200 text-sm font-medium"
                 >
@@ -236,7 +251,7 @@
                 </button>
                 <button
                   @click="confirmDelete(job.id)"
-                  class="flex-1 bg-red-50 text-red-600 px-3 py-2 rounded hover:bg-red-100 text-sm font-medium"
+                  class="flex-1 bg-red-50 text-red-700 px-3 py-2 rounded hover:bg-red-100 text-sm font-medium"
                 >
                   🗑 Удалить
                 </button>
@@ -263,7 +278,7 @@
       >
         <div
           class="bg-white w-full max-w-md rounded-lg shadow-lg p-4 md:p-6 relative max-h-[90vh] overflow-y-auto"
-          @click.outside="openAddModal = false"
+          @click.outside="closeAddModal()"
         >
           <h2
             class="text-base md:text-lg font-semibold mb-4"
@@ -274,6 +289,7 @@
             <label class="block text-sm mb-2">Имя</label>
             <input
               type="text"
+              placeholder="Typicode JSON"
               x-model="form.name"
               class="w-full border rounded px-3 py-2 mb-3 text-base"
               required
@@ -282,18 +298,67 @@
             <label class="block text-sm mb-2">URL</label>
             <input
               type="url"
+              placeholder="https://jsonplaceholder.typicode.com/posts"
               x-model="form.url"
               class="w-full border rounded px-3 py-2 mb-3 text-base"
               required
             />
 
-            <label class="block text-sm mb-2">Cron выражение</label>
-            <input
-              type="text"
-              x-model="form.schedule"
+            <label class="block text-sm mb-2">HTTP Метод</label>
+            <select
+              x-model="form.method"
               class="w-full border rounded px-3 py-2 mb-3 text-base"
-              placeholder="*/5 * * * *"
-            />
+            >
+              <option value="GET">GET</option>
+              <option value="POST">POST</option>
+              <option value="PUT">PUT</option>
+              <option value="PATCH">PATCH</option>
+              <option value="DELETE">DELETE</option>
+            </select>
+
+            <template x-if="form.method !== 'GET'">
+              <div>
+                <label class="block text-sm mb-2">Headers (JSON)</label>
+                <textarea
+                  x-model="form.headers"
+                  class="w-full border rounded px-3 py-2 mb-3 text-base font-mono text-sm"
+                  rows="3"
+                  placeholder='{"Content-Type": "application/json", "Authorization": "Bearer token"}'
+                ></textarea>
+
+                <label class="block text-sm mb-2">Body</label>
+                <textarea
+                  x-model="form.body"
+                  class="w-full border rounded px-3 py-2 mb-3 text-base font-mono text-sm"
+                  rows="4"
+                  placeholder='{"key": "value"}'
+                ></textarea>
+              </div>
+            </template>
+
+            <label class="block text-sm mb-2">Расписание</label>
+            <select
+              x-model="cronPreset"
+              @change="if (cronPreset !== 'custom') { form.schedule = cronPreset }"
+              class="w-full border rounded px-3 py-2 mb-3 text-base"
+            >
+              <template x-for="preset in cronPresets" :key="preset.value">
+                <option :value="preset.value" x-text="preset.label"></option>
+              </template>
+            </select>
+
+            <template x-if="cronPreset === 'custom'">
+              <div>
+                <label class="block text-sm mb-2">Cron выражение</label>
+                <input
+                  type="text"
+                  x-model="form.schedule"
+                  class="w-full border rounded px-3 py-2 mb-3 text-base font-mono"
+                  placeholder="*/5 * * * *"
+                  required
+                />
+              </div>
+            </template>
 
             <label class="inline-flex items-center mb-3">
               <input
@@ -309,7 +374,7 @@
             >
               <button
                 type="button"
-                @click="openAddModal = false"
+                @click="closeAddModal()"
                 class="w-full sm:w-auto px-4 py-2 text-gray-600 hover:text-black border border-gray-300 rounded hover:bg-gray-50"
               >
                 Отмена
@@ -363,6 +428,178 @@
         </div>
       </div>
 
+      <!-- Logs Modal -->
+      <div
+        x-show="openLogsModal"
+        x-cloak
+        x-transition
+        class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+      >
+        <div
+          class="bg-white w-full max-w-4xl rounded-lg shadow-lg p-4 md:p-6 max-h-[80vh] flex flex-col"
+          @click.outside="openLogsModal = false"
+        >
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg md:text-xl font-semibold">История выполнения</h2>
+            <button
+              @click="openLogsModal = false"
+              class="text-gray-400 hover:text-gray-600 text-2xl leading-none"
+            >
+              ×
+            </button>
+          </div>
+
+          <div class="overflow-auto flex-1">
+            <template x-if="jobLogs.length === 0">
+              <div class="text-center py-8 text-gray-500">
+                Нет логов для этой задачи
+              </div>
+            </template>
+
+            <template x-if="jobLogs.length > 0">
+              <div class="space-y-3">
+                <template x-for="log in jobLogs" :key="log.id">
+                  <div class="border rounded-lg p-4">
+                    <div
+                      class="flex flex-wrap items-center justify-between gap-2 mb-2"
+                    >
+                      <span
+                        class="px-2 py-1 text-xs rounded-full font-medium"
+                        :class="log.status === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'"
+                        x-text="log.status === 'success' ? '✓ Успешно' : '✗ Ошибка'"
+                      ></span>
+                      <span
+                        class="text-sm text-gray-500"
+                        x-text="formatDate(log.executedAt)"
+                      ></span>
+                    </div>
+
+                    <div class="text-sm space-y-1">
+                      <div
+                        class="flex items-center gap-2"
+                        x-show="log.statusCode"
+                      >
+                        <span class="font-medium text-gray-600">HTTP:</span>
+                        <span
+                          class="px-2 py-0.5 rounded text-xs font-mono"
+                          :class="log.statusCode >= 200 && log.statusCode < 300 ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'"
+                          x-text="log.statusCode"
+                        ></span>
+                      </div>
+
+                      <div
+                        class="flex items-center gap-2"
+                        x-show="log.duration"
+                      >
+                        <span class="font-medium text-gray-600">Время:</span>
+                        <span
+                          class="text-gray-900"
+                          x-text="log.duration + ' мс'"
+                        ></span>
+                      </div>
+
+                      <div x-show="log.response">
+                        <div class="flex items-center justify-between mb-1">
+                          <div class="font-medium text-gray-600">Ответ:</div>
+                          <button
+                            @click="viewFullResponse(log)"
+                            class="text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                          >
+                            Показать полностью
+                          </button>
+                        </div>
+                        <div
+                          class="bg-gray-50 p-2 rounded text-xs font-mono overflow-x-auto break-all"
+                          x-text="truncateText(log.response, 500)"
+                        ></div>
+                      </div>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </template>
+          </div>
+
+          <div class="mt-4 pt-4 border-t">
+            <button
+              @click="openLogsModal = false"
+              class="w-full sm:w-auto px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+            >
+              Закрыть
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Full Response Modal -->
+      <div
+        x-show="openFullResponseModal"
+        x-cloak
+        x-transition
+        class="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4"
+      >
+        <div
+          class="bg-white w-full max-w-5xl rounded-lg shadow-lg p-4 md:p-6 max-h-[90vh] flex flex-col"
+          @click.outside="openFullResponseModal = false"
+        >
+          <div class="flex justify-between items-center mb-4">
+            <div>
+              <h2 class="text-lg md:text-xl font-semibold">Полный ответ</h2>
+              <div class="flex items-center gap-3 mt-2 text-sm">
+                <span
+                  class="px-2 py-1 text-xs rounded-full font-medium"
+                  :class="selectedLog?.status === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'"
+                  x-text="selectedLog?.status === 'success' ? '✓ Успешно' : '✗ Ошибка'"
+                ></span>
+                <span
+                  x-show="selectedLog?.statusCode"
+                  class="px-2 py-0.5 rounded text-xs font-mono"
+                  :class="selectedLog?.statusCode >= 200 && selectedLog?.statusCode < 300 ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'"
+                  x-text="'HTTP ' + selectedLog?.statusCode"
+                ></span>
+                <span
+                  x-show="selectedLog?.duration"
+                  class="text-gray-600"
+                  x-text="selectedLog?.duration + ' мс'"
+                ></span>
+                <span
+                  class="text-gray-500"
+                  x-text="formatDate(selectedLog?.executedAt)"
+                ></span>
+              </div>
+            </div>
+            <button
+              @click="openFullResponseModal = false"
+              class="text-gray-400 hover:text-gray-600 text-2xl leading-none"
+            >
+              ×
+            </button>
+          </div>
+
+          <div class="overflow-auto flex-1 border rounded-lg">
+            <pre
+              class="p-4 text-xs font-mono whitespace-pre-wrap break-all bg-gray-50"
+              x-text="selectedLog?.response || 'Нет данных'"
+            ></pre>
+          </div>
+
+          <div class="mt-4 pt-4 border-t flex gap-2">
+            <button
+              @click="copyToClipboard(selectedLog?.response)"
+              class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            >
+              📋 Копировать
+            </button>
+            <button
+              @click="openFullResponseModal = false"
+              class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+            >
+              Закрыть
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- Login Modal -->
       <div
         x-show="openLoginModal"
@@ -380,6 +617,7 @@
             <label class="block text-sm mb-2">Email</label>
             <input
               type="email"
+              placeholder="email@example.com"
               x-model="loginForm.email"
               class="w-full border rounded px-3 py-2 mb-3 text-base"
               required
@@ -388,6 +626,7 @@
             <label class="block text-sm mb-2">Пароль</label>
             <input
               type="password"
+              placeholder="Введите пароль"
               x-model="loginForm.password"
               class="w-full border rounded px-3 py-2 mb-3 text-base"
               required
@@ -438,6 +677,7 @@
             <label class="block text-sm mb-2">Email</label>
             <input
               type="email"
+              placeholder="email@example.com"
               x-model="registerForm.email"
               class="w-full border rounded px-3 py-2 mb-3 text-base"
               required
@@ -446,6 +686,7 @@
             <label class="block text-sm mb-2">Пароль</label>
             <input
               type="password"
+              placeholder="Введите пароль"
               x-model="registerForm.password"
               class="w-full border rounded px-3 py-2 mb-3 text-base"
               minlength="6"
@@ -455,6 +696,7 @@
             <label class="block text-sm mb-2">Подтвердите пароль</label>
             <input
               type="password"
+              placeholder="Введите пароль еще раз"
               x-model="registerForm.confirmPassword"
               class="w-full border rounded px-3 py-2 mb-3 text-base"
               minlength="6"
@@ -493,50 +735,42 @@
     <script>
       function cronApp() {
         return {
-          jobs: [
-            {
-              id: 1,
-              name: 'Ping API',
-              url: 'https://api.example.com/ping',
-              schedule: '*/5 * * * *',
-              active: true,
-            },
-            {
-              id: 2,
-              name: 'Daily backup',
-              url: 'https://api.example.com/backup',
-              schedule: '0 3 * * *',
-              active: false,
-            },
-            {
-              id: 3,
-              name: 'Generate reports',
-              url: 'https://api.example.com/reports',
-              schedule: '30 1 * * 1',
-              active: true,
-            },
-            {
-              id: 4,
-              name: 'Sync data',
-              url: 'https://api.example.com/sync',
-              schedule: '0 */6 * * *',
-              active: false,
-            },
-            {
-              id: 5,
-              name: 'Clean temp files',
-              url: 'https://api.example.com/clean',
-              schedule: '15 2 * * *',
-              active: true,
-            },
-          ],
+          jobs: [],
           openAddModal: false,
           openDeleteModal: false,
           openLoginModal: false,
           openRegisterModal: false,
+          openLogsModal: false,
+          openFullResponseModal: false,
           editMode: false,
           deleteId: null,
-          form: { id: null, name: '', url: '', schedule: '', active: true },
+          selectedJobId: null,
+          jobLogs: [],
+          selectedLog: null,
+          form: {
+            id: null,
+            name: '',
+            url: '',
+            method: 'GET',
+            headers: '',
+            body: '',
+            schedule: '*/5 * * * *',
+            active: true,
+          },
+          cronPreset: '*/5 * * * *',
+          cronPresets: [
+            { value: '* * * * *', label: 'Каждую минуту' },
+            { value: '*/5 * * * *', label: 'Каждые 5 минут' },
+            { value: '*/15 * * * *', label: 'Каждые 15 минут' },
+            { value: '*/30 * * * *', label: 'Каждые 30 минут' },
+            { value: '0 * * * *', label: 'Каждый час' },
+            { value: '0 */6 * * *', label: 'Каждые 6 часов' },
+            { value: '0 0 * * *', label: 'Каждый день в полночь' },
+            { value: '0 12 * * *', label: 'Каждый день в 12:00' },
+            { value: '0 0 * * 0', label: 'Каждое воскресенье в полночь' },
+            { value: '0 0 1 * *', label: 'Первый день месяца' },
+            { value: 'custom', label: 'Кастомный крон' },
+          ],
 
           isAuthenticated: false,
           token: localStorage.getItem('jwt_token') || null,
@@ -548,7 +782,6 @@
 
           async init() {
             if (this.token) {
-              // Verify token and fetch user data
               try {
                 const meResponse = await fetch('/api/v1/auth/me', {
                   headers: {
@@ -561,14 +794,36 @@
                   this.user = userData;
                   this.isAuthenticated = true;
                   localStorage.setItem('user', JSON.stringify(userData));
+                  await this.fetchJobs();
                 } else {
-                  // Token is invalid, clear it
                   this.logout();
                 }
               } catch (error) {
                 console.error('Failed to fetch user data:', error);
                 this.logout();
               }
+            }
+          },
+
+          async fetchJobs() {
+            if (!this.token) return;
+
+            try {
+              const response = await fetch('/api/v1/jobs', {
+                headers: {
+                  Authorization: `Bearer ${this.token}`,
+                },
+              });
+
+              if (response.ok) {
+                const jobs = await response.json();
+                this.jobs = jobs.map((job) => ({
+                  ...job,
+                  active: job.isActive,
+                }));
+              }
+            } catch (error) {
+              console.error('Failed to fetch jobs:', error);
             }
           },
 
@@ -608,6 +863,8 @@
 
               this.openLoginModal = false;
               this.loginForm = { email: '', password: '' };
+
+              await this.fetchJobs();
             } catch (error) {
               this.loginError = error.message || 'Ошибка входа';
             }
@@ -647,7 +904,6 @@
               this.token = data.access_token;
               localStorage.setItem('jwt_token', data.access_token);
 
-              // Fetch user data
               const meResponse = await fetch('/api/v1/auth/me', {
                 headers: {
                   Authorization: `Bearer ${data.access_token}`,
@@ -684,35 +940,183 @@
             this.jobs = [];
           },
 
-          editJob(job) {
-            this.form = JSON.parse(JSON.stringify(job));
-            this.editMode = true;
-            this.openAddModal = true;
-          },
-          saveJob() {
-            if (this.editMode) {
-              const i = this.jobs.findIndex((j) => j.id === this.form.id);
-              this.jobs[i] = { ...this.form };
-            } else {
-              this.jobs.push({ ...this.form, id: Date.now() });
-            }
-            this.openAddModal = false;
-            this.editMode = false;
+          resetForm() {
             this.form = {
               id: null,
               name: '',
               url: '',
-              schedule: '',
+              method: 'GET',
+              headers: '',
+              body: '',
+              schedule: '*/5 * * * *',
               active: true,
             };
+            this.cronPreset = '*/5 * * * *';
+            this.editMode = false;
+          },
+
+          closeAddModal() {
+            this.openAddModal = false;
+            this.resetForm();
+          },
+
+          editJob(job) {
+            this.form = JSON.parse(JSON.stringify(job));
+            this.editMode = true;
+
+            // Определяем, соответствует ли расписание одному из пресетов
+            const matchingPreset = this.cronPresets.find(
+              (preset) =>
+                preset.value === job.schedule && preset.value !== 'custom',
+            );
+
+            if (matchingPreset) {
+              this.cronPreset = matchingPreset.value;
+            } else {
+              this.cronPreset = 'custom';
+            }
+
+            this.openAddModal = true;
+          },
+          async saveJob() {
+            try {
+              const jobData = {
+                name: this.form.name,
+                url: this.form.url,
+                method: this.form.method || 'GET',
+                headers: this.form.headers || null,
+                body: this.form.body || null,
+                schedule: this.form.schedule,
+                isActive:
+                  this.form.active !== undefined
+                    ? this.form.active
+                    : this.form.isActive,
+              };
+
+              if (this.editMode) {
+                const response = await fetch(`/api/v1/jobs/${this.form.id}`, {
+                  method: 'PATCH',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${this.token}`,
+                  },
+                  body: JSON.stringify(jobData),
+                });
+
+                if (!response.ok) {
+                  throw new Error('Не удалось обновить задачу');
+                }
+              } else {
+                const response = await fetch('/api/v1/jobs', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${this.token}`,
+                  },
+                  body: JSON.stringify(jobData),
+                });
+
+                if (!response.ok) {
+                  throw new Error('Не удалось создать задачу');
+                }
+              }
+
+              // Refresh jobs list
+              await this.fetchJobs();
+
+              this.openAddModal = false;
+              this.resetForm();
+            } catch (error) {
+              console.error('Failed to save job:', error);
+              alert(error.message || 'Ошибка при сохранении задачи');
+            }
           },
           confirmDelete(id) {
             this.deleteId = id;
             this.openDeleteModal = true;
           },
-          deleteJob() {
-            this.jobs = this.jobs.filter((j) => j.id !== this.deleteId);
-            this.openDeleteModal = false;
+          async deleteJob() {
+            try {
+              const response = await fetch(`/api/v1/jobs/${this.deleteId}`, {
+                method: 'DELETE',
+                headers: {
+                  Authorization: `Bearer ${this.token}`,
+                },
+              });
+
+              if (!response.ok) {
+                throw new Error('Не удалось удалить задачу');
+              }
+
+              // Refresh jobs list
+              await this.fetchJobs();
+
+              this.openDeleteModal = false;
+            } catch (error) {
+              console.error('Failed to delete job:', error);
+              alert(error.message || 'Ошибка при удалении задачи');
+            }
+          },
+
+          async viewLogs(jobId) {
+            this.selectedJobId = jobId;
+            this.openLogsModal = true;
+            this.jobLogs = [];
+
+            if (!this.token) return;
+
+            try {
+              const response = await fetch(
+                `/api/v1/job-logs/job/${jobId}?limit=50`,
+                {
+                  headers: {
+                    Authorization: `Bearer ${this.token}`,
+                  },
+                },
+              );
+
+              if (response.ok) {
+                this.jobLogs = await response.json();
+              }
+            } catch (error) {
+              console.error('Failed to fetch logs:', error);
+            }
+          },
+
+          viewFullResponse(log) {
+            this.selectedLog = log;
+            this.openFullResponseModal = true;
+          },
+
+          async copyToClipboard(text) {
+            if (!text) return;
+
+            try {
+              await navigator.clipboard.writeText(text);
+              alert('Скопировано в буфер обмена!');
+            } catch (error) {
+              console.error('Failed to copy:', error);
+              alert('Не удалось скопировать');
+            }
+          },
+
+          formatDate(dateString) {
+            if (!dateString) return '';
+            const date = new Date(dateString);
+            return date.toLocaleString('ru-RU', {
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+            });
+          },
+
+          truncateText(text, maxLength = 100) {
+            if (!text) return '';
+            if (text.length <= maxLength) return text;
+            return text.substring(0, maxLength) + '...';
           },
 
           getCronDescription(cron) {
